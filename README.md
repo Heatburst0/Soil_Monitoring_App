@@ -1,6 +1,13 @@
-# untitled_app
+# Soil Monitoring App
 
-A new Flutter project.
+A Flutter-based mobile application that monitors **soil conditions** using a sensor device.  
+The app collects **temperature** and **moisture** readings via Bluetooth (mocked for now), stores them in **Firebase Firestore**, and displays them in **graph** and **list** formats.
+
+
+
+https://github.com/user-attachments/assets/6e8d9faf-d9a2-4ccf-80cb-6628be4c6832
+
+
 
 ## Getting Started
 
