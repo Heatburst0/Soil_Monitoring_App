@@ -14,7 +14,7 @@ class HistoryPage extends StatefulWidget {
 
 class _HistoryScreenState extends State<HistoryPage>
     with SingleTickerProviderStateMixin {
-  String selectedRange = "1 Week";
+  String selectedRange = "1 Day";
   late TabController _tabController;
 
   @override
@@ -28,14 +28,15 @@ class _HistoryScreenState extends State<HistoryPage>
     DateTime fromDate;
 
     switch (selectedRange) {
-      case "1 Month":
-        fromDate = now.subtract(Duration(days: 30));
+      case "1 Hour":
+        fromDate = now.subtract(const Duration(hours: 1));
         break;
-      case "1 Year":
-        fromDate = now.subtract(Duration(days: 365));
+      case "1 Day":
+        fromDate = now.subtract(const Duration(days: 1));
         break;
+      case "1 Week":
       default:
-        fromDate = now.subtract(Duration(days: 7));
+        fromDate = now.subtract(const Duration(days: 7));
     }
 
     return FirebaseFirestore.instance
@@ -56,7 +57,7 @@ class _HistoryScreenState extends State<HistoryPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("History")),
+      appBar: AppBar(title: const Text("History")),
       body: Column(
         children: [
           Expanded(
@@ -64,32 +65,38 @@ class _HistoryScreenState extends State<HistoryPage>
               stream: _getReadings(),
               builder: (context, snapshot) {
                 if (!snapshot.hasData) {
-                  return Center(child: CircularProgressIndicator());
+                  return const Center(child: CircularProgressIndicator());
                 }
 
                 final readings = snapshot.data!;
                 if (readings.isEmpty) {
-                  return Center(child: Text("No data available"));
+                  return const Center(child: Text("No data available"));
                 }
 
-                // Format X-axis labels: show only a few spaced-out ones
+                // Format X-axis labels (dates or times depending on range)
                 List<String> labels = readings.map((r) {
-                  return DateFormat("dd MMM").format(r.timestamp);
+                  if (selectedRange == "1 Hour") {
+                    return DateFormat("HH:mm").format(r.timestamp);
+                  } else if (selectedRange == "1 Day") {
+                    return DateFormat("HH:mm").format(r.timestamp);
+                  } else {
+                    return DateFormat("dd MMM").format(r.timestamp);
+                  }
                 }).toList();
 
                 return Column(
                   children: [
                     TabBar(
                       controller: _tabController,
-                      tabs: [
+                      tabs: const [
                         Tab(text: "Temperature"),
                         Tab(text: "Moisture"),
                       ],
                     ),
-                    SizedBox(height: 10),
+                    const SizedBox(height: 10),
                     Container(
-                      height: 250, // Half height
-                      padding: EdgeInsets.all(16),
+                      height: MediaQuery.of(context).size.height * 0.5,
+                      padding: const EdgeInsets.all(16),
                       child: TabBarView(
                         controller: _tabController,
                         children: [
@@ -106,21 +113,25 @@ class _HistoryScreenState extends State<HistoryPage>
                         ],
                       ),
                     ),
+                    const SizedBox(height: 10),
+                    DropdownButton<String>(
+                      value: selectedRange,
+                      items: ["1 Hour", "1 Day", "1 Week"]
+                          .map((e) => DropdownMenuItem(
+                        value: e,
+                        child: Text(e),
+                      ))
+                          .toList(),
+                      onChanged: (val) {
+                        setState(() {
+                          selectedRange = val!;
+                        });
+                      },
+                    ),
                   ],
                 );
               },
             ),
-          ),
-          DropdownButton<String>(
-            value: selectedRange,
-            items: ["1 Week", "1 Month", "1 Year"]
-                .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-                .toList(),
-            onChanged: (val) {
-              setState(() {
-                selectedRange = val!;
-              });
-            },
           ),
         ],
       ),
@@ -148,13 +159,13 @@ class _HistoryScreenState extends State<HistoryPage>
             sideTitles: SideTitles(
               showTitles: true,
               reservedSize: 22,
-              interval: (values.length / 4).ceilToDouble(), // Avoid clutter
+              interval: (labels.length / 4).ceilToDouble(), // reduce clutter
               getTitlesWidget: (value, meta) {
                 int index = value.toInt();
                 if (index >= 0 && index < labels.length) {
                   return Text(
                     labels[index],
-                    style: TextStyle(fontSize: 10),
+                    style: const TextStyle(fontSize: 10),
                   );
                 }
                 return const SizedBox();
@@ -162,7 +173,20 @@ class _HistoryScreenState extends State<HistoryPage>
             ),
           ),
           leftTitles: AxisTitles(
-            sideTitles: SideTitles(showTitles: true),
+            sideTitles: SideTitles(
+              showTitles: true,
+              interval: ((values.reduce((a, b) => a > b ? a : b) -
+                  values.reduce((a, b) => a < b ? a : b)) /
+                  5)
+                  .clamp(1, double.infinity),
+              reservedSize: 40,
+              getTitlesWidget: (value, meta) {
+                return Text(
+                  value.toInt().toString(),
+                  style: const TextStyle(fontSize: 10),
+                );
+              },
+            ),
           ),
         ),
       ),
