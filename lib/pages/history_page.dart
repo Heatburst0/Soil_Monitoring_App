@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:untitled_app/services/firestore_service.dart';
 
 import '../services/bluetooth_service.dart';
 
@@ -16,6 +17,7 @@ class _HistoryScreenState extends State<HistoryPage>
     with SingleTickerProviderStateMixin {
   String selectedRange = "1 Day";
   late TabController _tabController;
+  final firestoreService = FirestoreService();
 
   @override
   void initState() {
@@ -39,119 +41,146 @@ class _HistoryScreenState extends State<HistoryPage>
         fromDate = now.subtract(const Duration(days: 7));
     }
 
-    return FirebaseFirestore.instance
-        .collection("readings")
-        .where("timestamp", isGreaterThan: fromDate)
-        .orderBy("timestamp", descending: false)
-        .snapshots()
-        .map((snapshot) => snapshot.docs.map((doc) {
-      final data = doc.data();
-      return SensorReading(
-        temperature: (data["temperature"] as num).toDouble(),
-        moisture: (data["moisture"] as num).toDouble(),
-        timestamp: (data["timestamp"] as Timestamp).toDate(),
-      );
-    }).toList());
+    return firestoreService.getReadings(fromDate);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text("History")),
-      body: Column(
-        children: [
-          Expanded(
-            child: StreamBuilder<List<SensorReading>>(
-              stream: _getReadings(),
-              builder: (context, snapshot) {
-                if (!snapshot.hasData) {
-                  return const Center(child: CircularProgressIndicator());
-                }
+      body: StreamBuilder<List<SensorReading>>(
+        stream: _getReadings(),
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) {
+            return const Center(child: CircularProgressIndicator());
+          }
 
-                final readings = snapshot.data!;
-                if (readings.isEmpty) {
-                  return const Center(child: Text("No data available"));
-                }
+          final readings = snapshot.data!;
+          if (readings.isEmpty) {
+            return const Center(child: Text("No data available"));
+          }
 
-                // Format X-axis labels (dates or times depending on range)
-                List<String> labels = readings.map((r) {
-                  if (selectedRange == "1 Hour") {
-                    return DateFormat("HH:mm").format(r.timestamp);
-                  } else if (selectedRange == "1 Day") {
-                    return DateFormat("HH:mm").format(r.timestamp);
-                  } else {
-                    return DateFormat("dd MMM").format(r.timestamp);
-                  }
-                }).toList();
+          // Format X-axis labels
+          final labels = _generateLabels(readings);
 
-                return Column(
-                  children: [
-                    TabBar(
-                      controller: _tabController,
-                      tabs: const [
-                        Tab(text: "Temperature"),
-                        Tab(text: "Moisture"),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    const Text(
-                      "Graph View",
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 10),
-                    Container(
-                      height: MediaQuery.of(context).size.height * 0.5,
-                      padding: const EdgeInsets.all(16),
-                      child: TabBarView(
-                        controller: _tabController,
-                        children: [
-                          _buildLineChart(
-                            readings.map((r) => r.temperature).toList(),
-                            labels,
-                            Colors.orange,
-                            "Temperature in °C"
-                          ),
-                          _buildLineChart(
-                            readings.map((r) => r.moisture).toList(),
-                            labels,
-                            Colors.blue,
-                            "Moisture %"
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Text(
-                        "Show readings of ",
-                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-                        ),
-                        const SizedBox(width: 10),
-                        DropdownButton<String>(
-                          value: selectedRange,
-                          items: ["1 Hour", "1 Day", "1 Week"]
-                              .map((e) => DropdownMenuItem(
-                            value: e,
-                            child: Text(e),
-                          ))
-                              .toList(),
-                          onChanged: (val) {
-                            setState(() {
-                              selectedRange = val!;
-                            });
-                          },
-                        ),
-                    ]
-                    )
-                  ],
-                );
-              },
+          return SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildTabs(),
+                const SizedBox(height: 10),
+                _buildSectionTitle("Graph View"),
+                _buildGraphs(readings, labels),
+                const SizedBox(height: 10),
+                _buildDropdown(),
+                const SizedBox(height: 10),
+                _buildSectionTitle("List View"),
+                _buildReadingsList(readings),
+              ],
             ),
+          );
+        },
+      ),
+    );
+  }
+
+
+  List<String> _generateLabels(List<SensorReading> readings) {
+    return readings.map((r) {
+      if (selectedRange == "1 Hour" || selectedRange == "1 Day") {
+        return DateFormat("HH:mm").format(r.timestamp);
+      } else {
+        return DateFormat("dd MMM").format(r.timestamp);
+      }
+    }).toList();
+  }
+
+  Widget _buildTabs() {
+    return TabBar(
+      controller: _tabController,
+      tabs: const [
+        Tab(text: "Temperature"),
+        Tab(text: "Moisture"),
+      ],
+    );
+  }
+
+  Widget _buildSectionTitle(String title) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Text(
+        title,
+        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+      ),
+    );
+  }
+
+  Widget _buildGraphs(List<SensorReading> readings, List<String> labels) {
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.5,
+      padding: const EdgeInsets.all(16),
+      child: TabBarView(
+        controller: _tabController,
+        children: [
+          _buildLineChart(
+            readings.map((r) => r.temperature).toList(),
+            labels,
+            Colors.orange,
+            "Temperature in °C",
+          ),
+          _buildLineChart(
+            readings.map((r) => r.moisture).toList(),
+            labels,
+            Colors.blue,
+            "Moisture %",
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildDropdown() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const Text(
+          "Show readings of ",
+          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+        ),
+        const SizedBox(width: 10),
+        DropdownButton<String>(
+          value: selectedRange,
+          items: ["1 Hour", "1 Day", "1 Week"]
+              .map((e) => DropdownMenuItem(
+            value: e,
+            child: Text(e),
+          ))
+              .toList(),
+          onChanged: (val) {
+            setState(() {
+              selectedRange = val!;
+            });
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildReadingsList(List<SensorReading> readings) {
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: readings.length,
+      itemBuilder: (context, index) {
+        final r = readings[index];
+        return ListTile(
+          leading: const Icon(Icons.thermostat),
+          title: Text(
+              "Temp: ${r.temperature.toStringAsFixed(1)} °C, Moisture: ${r.moisture.toStringAsFixed(1)}%"),
+          subtitle:
+          Text(DateFormat("dd MMM yyyy, HH:mm").format(r.timestamp)),
+        );
+      },
     );
   }
 
@@ -163,7 +192,6 @@ class _HistoryScreenState extends State<HistoryPage>
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Y-Axis label (rotated)
               RotatedBox(
                 quarterTurns: -1,
                 child: Center(
@@ -177,8 +205,6 @@ class _HistoryScreenState extends State<HistoryPage>
                 ),
               ),
               const SizedBox(width: 8),
-
-              // Line Chart
               Expanded(
                 child: LineChart(
                   LineChartData(
@@ -237,7 +263,6 @@ class _HistoryScreenState extends State<HistoryPage>
           ),
         ),
         const SizedBox(height: 4),
-        // X-axis label
         const Text(
           "Time",
           style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
@@ -245,6 +270,4 @@ class _HistoryScreenState extends State<HistoryPage>
       ],
     );
   }
-
-
 }

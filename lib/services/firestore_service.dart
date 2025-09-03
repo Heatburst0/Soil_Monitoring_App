@@ -14,9 +14,12 @@ class FirestoreService {
   }
 
   /// Get all readings (latest first)
-  Stream<List<SensorReading>> getReadings() {
+  Stream<List<SensorReading>> getReadings(
+      DateTime fromDate,
+      ) {
     return _db
         .collection("readings")
+        .where("timestamp", isGreaterThan: fromDate)
         .orderBy("timestamp", descending: true)
         .snapshots()
         .map((snapshot) => snapshot.docs.map((doc) {
