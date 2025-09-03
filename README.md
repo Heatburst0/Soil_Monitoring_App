@@ -7,6 +7,18 @@ The app collects **temperature** and **moisture** readings via Bluetooth (mocked
 
 https://github.com/user-attachments/assets/6e8d9faf-d9a2-4ccf-80cb-6628be4c6832
 
+## 📖 Overview
+
+- The app simulates connecting to a soil sensor device and retrieving real-time readings.  
+- This app uses email/password authentication using Firebase Authentication
+- All readings are stored in **Firebase Firestore** for persistence.  
+- Users can view data in:
+  - 📊 **Graph View** (Temperature & Moisture trends)
+  - 📋 **List View** (chronological log of readings)  
+- Works **offline** using Firestore’s built-in caching and auto-sync when back online.
+
+
+
 ## 🔧 Assumptions
 
 ### Bluetooth
