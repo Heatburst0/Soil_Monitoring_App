@@ -1,6 +1,8 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:syncfusion_flutter_gauges/gauges.dart';
+import 'package:untitled_app/auth.dart';
 import 'package:untitled_app/services/sensor_provider.dart';
 import 'package:intl/intl.dart';
 
@@ -11,6 +13,7 @@ class HomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<SensorProvider>();
+    final User? user = Auth().currentUser;
     // final formattedDate = ;
     return Scaffold(
       appBar: AppBar(title: const Text("Soil Monitoring")),
@@ -85,12 +88,33 @@ class HomePage extends StatelessWidget {
                         provider.notifyListeners(); // refresh card
                       }
                     },
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size(150, 40),
+                    ),
                     child: const Text("Reports"),
                   ),
                 ],
               ),
             const SizedBox(height: 20),
             const Text("Click on Test button to manually fetch latest readings"),
+            const SizedBox(height: 100),
+            ElevatedButton(
+              onPressed: () async {
+                await Auth().signOut();
+
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Signed out successfully")),
+                  );
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+                minimumSize: const Size(150, 40),
+              ),
+              child: const Text("Sign out"),
+            )
           ],
         ),
       ),

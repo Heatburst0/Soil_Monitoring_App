@@ -94,6 +94,11 @@ class _HistoryScreenState extends State<HistoryPage>
                       ],
                     ),
                     const SizedBox(height: 10),
+                    const Text(
+                      "Graph View",
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 10),
                     Container(
                       height: MediaQuery.of(context).size.height * 0.5,
                       padding: const EdgeInsets.all(16),
@@ -104,30 +109,42 @@ class _HistoryScreenState extends State<HistoryPage>
                             readings.map((r) => r.temperature).toList(),
                             labels,
                             Colors.orange,
+                            "Temperature in °C"
                           ),
                           _buildLineChart(
                             readings.map((r) => r.moisture).toList(),
                             labels,
                             Colors.blue,
+                            "Moisture %"
                           ),
                         ],
                       ),
                     ),
                     const SizedBox(height: 10),
-                    DropdownButton<String>(
-                      value: selectedRange,
-                      items: ["1 Hour", "1 Day", "1 Week"]
-                          .map((e) => DropdownMenuItem(
-                        value: e,
-                        child: Text(e),
-                      ))
-                          .toList(),
-                      onChanged: (val) {
-                        setState(() {
-                          selectedRange = val!;
-                        });
-                      },
-                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Text(
+                        "Show readings of ",
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                        ),
+                        const SizedBox(width: 10),
+                        DropdownButton<String>(
+                          value: selectedRange,
+                          items: ["1 Hour", "1 Day", "1 Week"]
+                              .map((e) => DropdownMenuItem(
+                            value: e,
+                            child: Text(e),
+                          ))
+                              .toList(),
+                          onChanged: (val) {
+                            setState(() {
+                              selectedRange = val!;
+                            });
+                          },
+                        ),
+                    ]
+                    )
                   ],
                 );
               },
@@ -138,58 +155,96 @@ class _HistoryScreenState extends State<HistoryPage>
     );
   }
 
-  Widget _buildLineChart(List<double> values, List<String> labels, Color color) {
-    return LineChart(
-      LineChartData(
-        minY: values.reduce((a, b) => a < b ? a : b) - 1,
-        maxY: values.reduce((a, b) => a > b ? a : b) + 1,
-        lineBarsData: [
-          LineChartBarData(
-            spots: List.generate(
-              values.length,
-                  (i) => FlSpot(i.toDouble(), values[i]),
-            ),
-            isCurved: true,
-            color: color,
-            dotData: FlDotData(show: false),
-          )
-        ],
-        titlesData: FlTitlesData(
-          bottomTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              reservedSize: 22,
-              interval: (labels.length / 4).ceilToDouble(), // reduce clutter
-              getTitlesWidget: (value, meta) {
-                int index = value.toInt();
-                if (index >= 0 && index < labels.length) {
-                  return Text(
-                    labels[index],
-                    style: const TextStyle(fontSize: 10),
-                  );
-                }
-                return const SizedBox();
-              },
-            ),
-          ),
-          leftTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              interval: ((values.reduce((a, b) => a > b ? a : b) -
-                  values.reduce((a, b) => a < b ? a : b)) /
-                  5)
-                  .clamp(1, double.infinity),
-              reservedSize: 40,
-              getTitlesWidget: (value, meta) {
-                return Text(
-                  value.toInt().toString(),
-                  style: const TextStyle(fontSize: 10),
-                );
-              },
-            ),
+  Widget _buildLineChart(
+      List<double> values, List<String> labels, Color color, String yLabel) {
+    return Column(
+      children: [
+        Expanded(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Y-Axis label (rotated)
+              RotatedBox(
+                quarterTurns: -1,
+                child: Center(
+                  child: Text(
+                    yLabel,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+
+              // Line Chart
+              Expanded(
+                child: LineChart(
+                  LineChartData(
+                    minY: values.reduce((a, b) => a < b ? a : b) - 1,
+                    maxY: values.reduce((a, b) => a > b ? a : b) + 1,
+                    lineBarsData: [
+                      LineChartBarData(
+                        spots: List.generate(
+                          values.length,
+                              (i) => FlSpot(i.toDouble(), values[i]),
+                        ),
+                        isCurved: true,
+                        color: color,
+                        dotData: FlDotData(show: false),
+                      )
+                    ],
+                    titlesData: FlTitlesData(
+                      bottomTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          reservedSize: 22,
+                          interval: (labels.length / 4).ceilToDouble(),
+                          getTitlesWidget: (value, meta) {
+                            int index = value.toInt();
+                            if (index >= 0 && index < labels.length) {
+                              return Text(
+                                labels[index],
+                                style: const TextStyle(fontSize: 10),
+                              );
+                            }
+                            return const SizedBox();
+                          },
+                        ),
+                      ),
+                      leftTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          interval: ((values.reduce((a, b) => a > b ? a : b) -
+                              values.reduce((a, b) => a < b ? a : b)) /
+                              5)
+                              .clamp(1, double.infinity),
+                          reservedSize: 40,
+                          getTitlesWidget: (value, meta) {
+                            return Text(
+                              value.toInt().toString(),
+                              style: const TextStyle(fontSize: 10),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
-      ),
+        const SizedBox(height: 4),
+        // X-axis label
+        const Text(
+          "Time",
+          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+        ),
+      ],
     );
   }
+
+
 }
