@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "626533913623",
+    "project_id": "soilmonitoringapp-3b827",
+    "storage_bucket": "soilmonitoringapp-3b827.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:626533913623:android:bd1b66a0f820968834b852",
+        "android_client_info": {
+          "package_name": "com.example.untitled_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBh6Pof5qZ79-lQA8NEbZDboUOXR-adLDk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
